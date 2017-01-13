@@ -14,5 +14,10 @@
             "name": "Miguel Angel Villagra",
             "email": "miguelvillagrafernandez@gmail.com"
         }
-    ]
+    ],
+    "autoload": {
+        "psr-4": {
+            "OcioMercado\\LaravelJWT\\": "src/JWTServiceProvider"
+        }
+    }
 }
