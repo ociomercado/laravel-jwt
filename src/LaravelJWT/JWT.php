@@ -28,7 +28,10 @@ class JWT
     } else {
       $this->signer = new RsaSha256();
       $this->key = (new Keychain())->getPrivateKey($this->config['privateKeyPath']);
-      $this->publicKey = (new Keychain())->getPublicKey($this->config['publicKeyPath']);
+
+      if (!is_null($this->config['publicKeyPath'])) {
+        $this->publicKey = (new Keychain())->getPublicKey($this->config['publicKeyPath']);
+      }
     }
   }
 
