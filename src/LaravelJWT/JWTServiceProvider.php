@@ -1,9 +1,9 @@
 <?php
-namespace LaravelJWT;
+namespace OcioMercado\LaravelJWT;
 
 use Illuminate\Support\ServiceProvider;
-use LaravelJWT\Http\Middleware\JWTMiddleware;
-use JWT;
+use OcioMercado\LaravelJWT\Http\Middleware\JWTMiddleware;
+use OcioMercado\LaravelJWT\JWT;
 
 class JWTServiceProvider extends ServiceProvider
 {
@@ -15,7 +15,7 @@ class JWTServiceProvider extends ServiceProvider
 
   public function register() {
     $this->app->singleton('JWT', function () {
-      return new JWT(config('jwt'));
+      return new JWT();
     });
   }
 }

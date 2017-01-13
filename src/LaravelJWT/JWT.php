@@ -1,5 +1,5 @@
 <?php
-namespace LaravelJWT;
+namespace OcioMercado\LaravelJWT;
 
 use Illuminate\Http\Request;
 use Auth;
@@ -19,8 +19,8 @@ class JWT
   private $key;
   private $publicKey;
 
-  public function __construct($config) {
-    $this->config = $config;
+  public function __construct() {
+    $this->config = config('jwt');
 
     if (is_null($this->config['privateKeyPath'])) {
       $this->signer = new Sha256();
@@ -39,11 +39,11 @@ class JWT
       $this->builder->setIssuer($this->config['iss']);
     }
 
-    if (!is_null($this-config['sub'])) {
+    if (!is_null($this->config['sub'])) {
       $this->builder->setSubject($this->config['sub']);
     }
 
-    if (!is_null($this-config['aud'])) {
+    if (!is_null($this->config['aud'])) {
       $this->builder->setAudience($this->config['aud']);
     }
 
@@ -80,24 +80,31 @@ class JWT
       $validator->setIssuer($this->config['iss']);
     }
 
-    if (!is_null($this-config['sub'])) {
+    if (!is_null($this->config['sub'])) {
       $validator->setSubject($this->config['sub']);
     }
 
-    if (!is_null($this-config['aud'])) {
+    if (!is_null($this->config['aud'])) {
       $validator->setAudience($this->config['aud']);
     }
 
     try {
       $token = (new Parser())->parse((string)$token);
+
       $validator->setId($token->getClaim('jti'));
 
-      if (!$token->validate($data)) {
+      if (!$token->validate($validator)) {
         return ['success' => false, 'error' => 'Unauthorized data.', 'code' => 401];
       }
 
-      if (!$token->verify($this->signer, $this->publicKey)) {
-        return ['success' => false, 'error' => 'Unauthorized sign.', 'code' => 401];;
+      if (is_null($this->publicKey)) {
+        if (!$token->verify($this->signer, $this->key)) {
+          return ['success' => false, 'error' => 'Unauthorized sign.', 'code' => 401];;
+        }
+      } else {
+        if (!$token->verify($this->signer, $this->publicKey)) {
+          return ['success' => false, 'error' => 'Unauthorized sign.', 'code' => 401];;
+        }
       }
     } catch (Exception $e) {
       return ['success' => false, 'error' => 'Unauthorized.', 'code' => 403];

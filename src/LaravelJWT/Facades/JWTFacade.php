@@ -1,5 +1,5 @@
 <?php
-namespace LaravelJWT\Facades;
+namespace OcioMercado\LaravelJWT\Facades;
 
 use Illuminate\Support\Facades\Facade;
 

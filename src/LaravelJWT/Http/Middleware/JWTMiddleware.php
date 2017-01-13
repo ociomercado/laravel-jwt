@@ -1,5 +1,5 @@
 <?php
-namespace LaravelJWT\Middleware;
+namespace OcioMercado\LaravelJWT\Http\Middleware;
 
 use Closure;
 
@@ -28,6 +28,7 @@ class JWTMiddleware
     }
 
     $token = isset($headerToken) ? $headerToken : $requestToken;
+    $token = explode('Bearer ', $token)[1];
 
     $result = app('JWT')->verifyToken($token);
 
@@ -36,7 +37,7 @@ class JWTMiddleware
       unset($result['code']);
 
       if ($request->ajax() || $request->wantsJson()) {
-        return $next($request)->json($result, $code);
+        return response()->json($result, $code);
       } else {
         return redirect($config['redirect']);
       }
@@ -49,7 +50,7 @@ class JWTMiddleware
 
     if ($time < ($iat + $config['exp'])) {
       if ($request->ajax() || $request->wantsJson()) {
-        return $response->json(['token', $token->__toString()]);
+        return $response->header('Token', $token->__toString());
       } else {
         return redirect($config['redirect']);
       }
@@ -63,10 +64,6 @@ class JWTMiddleware
 
     $newToken = app('JWT')->createToken($jti);
 
-    if ($request->ajax() || $request->wantsJson()) {
-      return $response->json(['token', $newToken->__toString()]);
-    } else {
-      $response->cookie("token", $newToken->__toString());
-    }
+    return $response->header('Token', $newToken->__toString());
   }
 }
