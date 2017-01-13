@@ -62,7 +62,20 @@ class JWTMiddleware
       $jti = $token->getClaim('jti');
     }
 
-    $newToken = app('JWT')->createToken($jti);
+    $ccKeys = null;
+    $customClaims = [];
+
+    if ($token->hasClaim('customClaims')) {
+      $ccKeys = explode(',', $token->getClaim('customClaims'));
+
+      foreach ($ccKeys as $cck) {
+        if ($token->hasClaim($cck)) {
+          $customClaims[$cck] = $token->getClaim($cck);
+        }
+      }
+    }
+
+    $newToken = app('JWT')->createToken($jti, $customClaims);
 
     return $response->header('Token', $newToken->__toString());
   }

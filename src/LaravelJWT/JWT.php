@@ -32,6 +32,16 @@ class JWT
     }
   }
 
+  /**
+   * Creates and signs a new JWT.
+   *
+   * It signs the token with the configured type of key in the jwt.php file.
+   *
+   * @param string $jti A unique identifier for the token.
+   * @param mixed[] $customClaims Optional data to append to the token.
+   *
+   * @return Lcobucci\JWT\Token
+   */
   public function createToken($jti = null, $customClaims = null) {
     $this->builder = new Builder();
 
@@ -62,10 +72,12 @@ class JWT
       $this->builder->setExpiration($time + $this->config['exp']);
     }
 
-    if (!is_null($customClaims) && is_array($customClaims)) {
+    if (!is_null($customClaims) && is_array($customClaims) && count($customClaims) > 0) {
       foreach ($customClaims as $k => $v) {
         $this->builder->set($k, $v);
       }
+      $ccKeys = implode(',', array_keys($customClaims));
+      $this->builder->set('customClaims', $ccKeys);
     }
 
     $token = $this->builder->sign($this->signer, $this->key)->getToken();
@@ -73,6 +85,15 @@ class JWT
     return $token;
   }
 
+  /**
+   * Validates and verifies a JWT.
+   *
+   * It verfies the token with the configured type of key in the jwt.php file.
+   *
+   * @param string $token The token.
+   *
+   * @return array Returns an array with the results.
+   */
   public function verifyToken($token) {
     $validator = new ValidationData();
 
