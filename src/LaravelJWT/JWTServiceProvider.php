@@ -1,4 +1,10 @@
 <?php
+/**
+ * Laravel-JWT - A simple Laravel package to work with JWT
+ * Author: Miguel Ángel Villagrá
+ * Organization: OcioMercado
+ */
+
 namespace OcioMercado\LaravelJWT;
 
 use Illuminate\Support\ServiceProvider;
@@ -15,7 +21,7 @@ class JWTServiceProvider extends ServiceProvider
 
   public function register() {
     $this->app->singleton('JWT', function () {
-      return new JWT();
+      return new JWT($this->app['request']);
     });
   }
 }

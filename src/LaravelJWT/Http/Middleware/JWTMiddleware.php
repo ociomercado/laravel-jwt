@@ -1,7 +1,18 @@
 <?php
+/**
+ * Laravel-JWT - A simple Laravel package to work with JWT
+ * Author: Miguel Ángel Villagrá
+ * Organization: OcioMercado
+ */
+
 namespace OcioMercado\LaravelJWT\Http\Middleware;
 
+use Illuminate\Http\Request;
 use Closure;
+use OcioMercado\LaravelJWT\Exceptions\TokenNotFoundException;
+use OcioMercado\LaravelJWT\Exceptions\TokenExpiredException;
+use OcioMercado\LaravelJWT\Exceptions\InvalidTokenException;
+use OcioMercado\LaravelJWT\Exceptions\InvalidTokenSignException;
 
 class JWTMiddleware
 {
@@ -13,70 +24,65 @@ class JWTMiddleware
     * @param  string|null  $guard
     * @return mixed
     */
-  public function handle($request, Closure $next, $guard = null) {
+  public function handle(Request $request, Closure $next, $guard = null) {
     $config = config('jwt');
-    
-    $headerToken = $request->header($config['headerKey']);
-    $requestToken = $request->get($config['requestKey']);
-
-    if (!isset($headerToken) && !isset($requestToken)) {
-      if ($request->ajax() || $request->wantsJson()) {
-        return response()->json(['success' => false, 'error' => 'Unauthorized.'], 403);
-      } else {
-        return redirect($config['redirect']);
-      }
-    }
-
-    $token = isset($headerToken) ? $headerToken : $requestToken;
-    $token = explode('Bearer ', $token)[1];
-
-    $result = app('JWT')->verifyToken($token);
-
-    if ($result['success'] === false) {
-      $code = $result['code'];
-      unset($result['code']);
-
-      if ($request->ajax() || $request->wantsJson()) {
-        return response()->json($result, $code);
-      } else {
-        return redirect($config['redirect']);
-      }
-    }
-
     $response = $next($request);
-    $token = $result['token'];
-    $iat = $token->getClaim('iat');
-    $time = time();
 
-    if ($time < ($iat + $config['exp'])) {
+    try {
+      $token = app('JWT')->verifyToken();
+    } catch (TokenNotFoundException $e) {
       if ($request->ajax() || $request->wantsJson()) {
-        return $response->header('Token', $token->__toString());
+        return response()->json(['success' => false, 'error' => $e->getMessage()], $e->getStatus());
+      } else {
+        return redirect($config['redirect']);
+      }
+    } catch (InvalidTokenException $e) {
+      if ($request->ajax() || $request->wantsJson()) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], $e->getStatus());
+      } else {
+        return redirect($config['redirect']);
+      }
+    } catch (InvalidTokenSignException $e) {
+      if ($request->ajax() || $request->wantsJson()) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], $e->getStatus());
       } else {
         return redirect($config['redirect']);
       }
     }
 
-    $jti = null;
-
-    if ($token->hasClaim('jti')) {
-      $jti = $token->getClaim('jti');
-    }
-
-    $ccKeys = null;
-    $customClaims = [];
-
-    if ($token->hasClaim('customClaims')) {
-      $ccKeys = explode(',', $token->getClaim('customClaims'));
-
-      foreach ($ccKeys as $cck) {
-        if ($token->hasClaim($cck)) {
-          $customClaims[$cck] = $token->getClaim($cck);
+    try {
+      app('JWT')->tokenExpired();
+    } catch (TokenExpiredException $e) {
+      if (!app('JWT')->isRefreshableToken()) {
+        if ($request->ajax() || $request->wantsJson()) {
+          return response()->json(['success' => false, 'error' => $e->getMessage()], $e->getStatus());
+        } else {
+          return redirect($config['redirect']);
         }
+      } else {
+        $jti = null;
+
+        if ($token->hasClaim('jti')) {
+          $jti = $token->getClaim('jti');
+        }
+
+        $ccKeys = null;
+        $customClaims = [];
+
+        if ($token->hasClaim('customClaims')) {
+          $ccKeys = explode(',', $token->getClaim('customClaims'));
+
+          foreach ($ccKeys as $cck) {
+            if ($token->hasClaim($cck)) {
+              $customClaims[$cck] = $token->getClaim($cck);
+            }
+          }
+        }
+
+        $token = app('JWT')->createToken($jti, $customClaims);
       }
     }
 
-    $newToken = app('JWT')->createToken($jti, $customClaims);
-
-    return $response->header('Token', $newToken->__toString());
+    return $response->header('Token', $token->__toString());
   }
 }

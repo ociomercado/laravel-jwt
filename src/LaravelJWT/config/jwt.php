@@ -26,21 +26,29 @@ return [
 
   /**
     * Identifies the expiration time on or after which the JWT MUST NOT be accepted for processing.
+    * Value in milliseconds.
     * Use of this claim is OPTIONAL.
     */
   'exp' => 3600,
 
   /**
     * Time before which the JWT MUST NOT be accepted for processing.
+    * Value in milliseconds.
     * Use of this claim is OPTIONAL.
     */
   'nbf' => 0,
 
   /**
+    * The time limit in milliseconds that allows a token to be refreshed.
+    * Defaults to 2 weeks.
+    */
+  'refreshTTL' => 3600 * 24 * 15,
+
+  /**
     * Key used to sign the JWT Claims Set with the specified algorithm ('alg' claim).
     * Used when 'privateKeyPath' is null.
     */
-  'key' => env('APP_KEY'),
+  'key' => env('APP_KEY', 'app-key'),
 
   /**
     * Private keychain used to sign the JWT Claims Set with RSA or ECDSA.

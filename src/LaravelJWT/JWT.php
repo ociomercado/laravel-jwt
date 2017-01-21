@@ -1,4 +1,10 @@
 <?php
+/**
+ * Laravel-JWT - A simple Laravel package to work with JWT
+ * Author: Miguel Ángel Villagrá
+ * Organization: OcioMercado
+ */
+
 namespace OcioMercado\LaravelJWT;
 
 use Illuminate\Http\Request;
@@ -9,17 +15,24 @@ use Lcobucci\JWT\Signer\Keychain;
 use Lcobucci\JWT\Signer\Rsa\Sha256 as RsaSha256;
 use Lcobucci\JWT\ValidationData;
 use Lcobucci\JWT\Parser;
-use Exception;
+use OcioMercado\LaravelJWT\Exceptions\TokenNotFoundException;
+use OcioMercado\LaravelJWT\Exceptions\InvalidTokenException;
+use OcioMercado\LaravelJWT\Exceptions\InvalidTokenSignException;
+use InvalidArgumentException;
 
 class JWT
 {
+  private $request;
   private $config;
   private $builder;
   private $signer;
   private $key;
   private $publicKey;
+  private $tokenString;
+  public $token;
 
-  public function __construct() {
+  public function __construct(Request $request) {
+    $this->request = $request;
     $this->config = config('jwt');
 
     if (is_null($this->config['privateKeyPath'])) {
@@ -33,6 +46,52 @@ class JWT
         $this->publicKey = (new Keychain())->getPublicKey($this->config['publicKeyPath']);
       }
     }
+  }
+
+  /**
+   * Gets the JWT string from the request headers or from the GET parameter.
+   *
+   * @return string Returns the token string.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   */
+  public function getTokenString() {
+    $headerToken = $this->request->header($this->config['headerKey']);
+    $requestToken = $this->request->get($this->config['requestKey']);
+
+    if (!isset($headerToken) && !isset($requestToken)) {
+      throw new TokenNotFoundException();
+    }
+
+    $tokenString = isset($headerToken) ? $headerToken : $requestToken;
+    $tokenString = explode('Bearer ', $tokenString)[1];
+    return $tokenString;
+  }
+
+  /**
+   * Parses the JWT string.
+   *
+   * @return Lcobucci\JWT\Token Returns the token.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   */
+  public function parseTokenString() {
+    if (is_null($this->tokenString)) {
+      try {
+        $this->tokenString = self::getTokenString();
+      } catch (TokenNotFoundException $e) {
+        throw $e;
+      }
+    }
+
+    try {
+      $token = (new Parser())->parse((string)$this->tokenString);
+    } catch (InvalidArgumentException $e) {
+      throw new InvalidTokenException();
+    }
+
+    return $token;
   }
 
   /**
@@ -83,9 +142,9 @@ class JWT
       $this->builder->set('customClaims', $ccKeys);
     }
 
-    $token = $this->builder->sign($this->signer, $this->key)->getToken();
+    $this->token = $this->builder->sign($this->signer, $this->key)->getToken();
 
-    return $token;
+    return $this->token;
   }
 
   /**
@@ -93,11 +152,13 @@ class JWT
    *
    * It verfies the token with the configured type of key in the jwt.php file.
    *
-   * @param string $token The token.
+   * @return Lcobucci\JWT\Token Returns the token.
    *
-   * @return array Returns an array with the results.
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   * @throws InvalidTokenSignException When the token sign is not valid.
    */
-  public function verifyToken($token) {
+  public function verifyToken() {
     $validator = new ValidationData();
 
     if (!is_null($this->config['iss'])) {
@@ -113,27 +174,80 @@ class JWT
     }
 
     try {
-      $token = (new Parser())->parse((string)$token);
-
-      $validator->setId($token->getClaim('jti'));
-
-      if (!$token->validate($validator)) {
-        return ['success' => false, 'error' => 'Unauthorized data.', 'code' => 401];
-      }
-
-      if (is_null($this->publicKey)) {
-        if (!$token->verify($this->signer, $this->key)) {
-          return ['success' => false, 'error' => 'Unauthorized sign.', 'code' => 401];;
-        }
-      } else {
-        if (!$token->verify($this->signer, $this->publicKey)) {
-          return ['success' => false, 'error' => 'Unauthorized sign.', 'code' => 401];;
-        }
-      }
-    } catch (Exception $e) {
-      return ['success' => false, 'error' => 'Unauthorized.', 'code' => 403];
+      $this->token = self::parseTokenString();
+    } catch (TokenNotFoundException $e) {
+      throw $e;
+    } catch (InvalidTokenException $e) {
+      throw $e;
     }
 
-    return ['success' => true, 'token' => $token];
+    $validator->setId($this->token->getClaim('jti'));
+
+    if (!$this->token->validate($validator)) {
+      throw new InvalidTokenException();
+    }
+
+    if (is_null($this->publicKey)) {
+      if (!$this->token->verify($this->signer, $this->key)) {
+        throw new InvalidTokenSignException();
+      }
+    } else {
+      if (!$this->token->verify($this->signer, $this->publicKey)) {
+        throw new InvalidTokenSignException();
+      }
+    }
+
+    return $this->token;
+  }
+
+  /**
+   * Checks if the JWT has expired.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   * @throws TokenExpiredException When the token has expired.
+   */
+  public function tokenExpired() {
+    if (is_null($this->token)) {
+      try {
+        $this->token = self::parseTokenString();
+      } catch (TokenNotFoundException $e) {
+        throw $e;
+      } catch (InvalidTokenException $e) {
+        throw $e;
+      }
+    }
+    $iat = $this->token->getClaim('iat');
+    $time = time();
+
+    if ($time < ($iat + $this->config['exp'])) {
+      throw new TokenExpiredException();
+    }
+  }
+
+  /**
+   * Checks if the JWT can be refreshed.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   */
+  public function isRefreshableToken() {
+    if (is_null($this->token)) {
+      try {
+        $this->token = self::parseTokenString();
+      } catch (TokenNotFoundException $e) {
+        throw $e;
+      } catch (InvalidTokenException $e) {
+        throw $e;
+      }
+    }
+    $iat = $this->token->getClaim('iat');
+    $time = time();
+
+    if ($time < ($iat + $this->config['refreshTTL'])) {
+      return false;
+    }
+
+    return true;
   }
 }
