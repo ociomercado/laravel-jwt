@@ -220,13 +220,15 @@ class JWT
     $iat = $this->token->getClaim('iat');
     $time = time();
 
-    if ($time < ($iat + $this->config['exp'])) {
+    if ($time > ($iat + $this->config['exp'])) {
       throw new TokenExpiredException();
     }
   }
 
   /**
    * Checks if the JWT can be refreshed.
+   *
+   * @return boolean Returns true is the token can be refreshed, otherwise it returns false.
    *
    * @throws TokenNotFoundException When the token is not found.
    * @throws InvalidTokenException When the token is not valid.
@@ -244,7 +246,7 @@ class JWT
     $iat = $this->token->getClaim('iat');
     $time = time();
 
-    if ($time < ($iat + $this->config['refreshTTL'])) {
+    if ($time > ($iat + $this->config['refreshTTL'])) {
       return false;
     }
 

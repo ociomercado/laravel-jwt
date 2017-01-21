@@ -78,9 +78,57 @@ The `middleware` checks if the `request` has a `Authorization` header or the par
    *
    * It verfies the token with the configured type of key in the jwt.php file.
    *
-   * @param string $token The token.
+   * @return Lcobucci\JWT\Token Returns the token.
    *
-   * @return array Returns an array with the results.
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   * @throws InvalidTokenSignException When the token sign is not valid.
    */
   public function verifyToken($token)
+```
+
+```php
+  /**
+   * Gets the JWT string from the request headers or from the GET parameter.
+   *
+   * @return string Returns the token string.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   */
+  public function getTokenString()
+```
+
+```php
+  /**
+   * Parses the JWT string.
+   *
+   * @return Lcobucci\JWT\Token Returns the token.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   */
+  public function parseTokenString()
+```
+
+```php
+  /**
+   * Checks if the JWT has expired.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   * @throws TokenExpiredException When the token has expired.
+   */
+  public function tokenExpired()
+```
+
+```php
+  /**
+   * Checks if the JWT can be refreshed.
+   *
+   * @return boolean Returns true is the token can be refreshed, otherwise it returns false.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   */
+  public function isRefreshableToken()
 ```
