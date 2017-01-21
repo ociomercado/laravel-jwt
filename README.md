@@ -132,3 +132,15 @@ The `middleware` checks if the `request` has a `Authorization` header or the par
    */
   public function isRefreshableToken()
 ```
+
+```php
+  /**
+   * Gets the JWT object.
+   *
+   * @return Lcobucci\JWT\Token Returns the token.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   */
+  public function getToken()
+```

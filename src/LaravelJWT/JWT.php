@@ -29,7 +29,7 @@ class JWT
   private $key;
   private $publicKey;
   private $tokenString;
-  public $token;
+  private $token;
 
   public function __construct(Request $request) {
     $this->request = $request;
@@ -251,5 +251,27 @@ class JWT
     }
 
     return true;
+  }
+
+  /**
+   * Gets the JWT object.
+   *
+   * @return Lcobucci\JWT\Token Returns the token.
+   *
+   * @throws TokenNotFoundException When the token is not found.
+   * @throws InvalidTokenException When the token is not valid.
+   */
+  public function getToken() {
+    if (is_null($this->token)) {
+      try {
+        $this->token = self::parseTokenString();
+      } catch (TokenNotFoundException $e) {
+        throw $e;
+      } catch (InvalidTokenException $e) {
+        throw $e;
+      }
+    }
+
+    return $this->token;
   }
 }
