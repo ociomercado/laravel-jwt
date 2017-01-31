@@ -14,7 +14,11 @@ use OcioMercado\LaravelJWT\JWT;
 class JWTServiceProvider extends ServiceProvider
 {
   public function boot() {
-    $this->app['router']->middleware('JWT', JWTMiddleware::class);
+    if (method_exists($this->app['router'], 'middleware')) {
+      $this->app['router']->middleware('JWT', JWTMiddleware::class);
+    } elseif (method_exists($this->app['router'], 'aliasMiddleware')) {
+      $this->app['router']->aliasMiddleware('JWT', JWTMiddleware::class);
+    }
 
     $this->publishes([__DIR__ . '/config/jwt.php' => config_path('jwt.php')], 'config');
   }
