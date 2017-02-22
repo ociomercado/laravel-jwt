@@ -59,10 +59,22 @@ return [
 
   /**
     * Public keychain used to verify the JWT Claims Set with RSA or ECDSA.
-    * Not used if 'privateKeyPath' is null.
+    * Not used if 'privateKeyPath' is null or 'firebasePublicKeys' is true.
     * E.g. 'file://path/to/public/key'
     */
   'publicKeyPath' => null,
+
+  /**
+    * If set to true, it will use Firebase public keys to verify the token.
+    * Not used if 'privateKeyPath' is null.
+    */
+  'useFirebasePublicKeys' => false,
+
+  /**
+    * URL where the Firebase public keys are located.
+    * Not used if 'privateKeyPath' is null.
+    */
+  'firebasePublicKeysURL' => 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com',
 
   /**
     * Name of the header key in the request, that has the JWT.

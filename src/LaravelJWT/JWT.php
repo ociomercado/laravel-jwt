@@ -28,6 +28,7 @@ class JWT
   private $signer;
   private $key;
   private $publicKey;
+  private $firebasePublicKeys;
   private $tokenString;
   private $token;
 
@@ -42,7 +43,9 @@ class JWT
       $this->signer = new RsaSha256();
       $this->key = (new Keychain())->getPrivateKey($this->config['privateKeyPath']);
 
-      if (!is_null($this->config['publicKeyPath'])) {
+      if (!is_null($this->config['useFirebasePublicKeys']) && $this->config['useFirebasePublicKeys'] === true) {
+        $this->firebasePublicKeys = json_decode(file_get_contents($this->config['firebasePublicKeysURL']), true);
+      } elseif (!is_null($this->config['publicKeyPath'])) {
         $this->publicKey = (new Keychain())->getPublicKey($this->config['publicKeyPath']);
       }
     }
@@ -187,8 +190,22 @@ class JWT
       throw new InvalidTokenException();
     }
 
-    if (is_null($this->publicKey)) {
+    if (!isset($this->publicKey)) {
       if (!$this->token->verify($this->signer, $this->key)) {
+        throw new InvalidTokenSignException();
+      }
+    } elseif (isset($this->firebasePublicKeys)) {
+      if (!$this->token->hasHeader('kid')) {
+        throw new InvalidTokenException();
+      }
+      $kid = $this->token->getHeader('kid');
+
+      if (!array_key_exists($kid, $this->firebasePublicKeys)) {
+        throw new InvalidTokenException();
+      }
+      $publicKey = (new Keychain())->getPublicKey($this->firebasePublicKeys[$kid]);
+
+      if (!$this->token->verify($this->signer, $publicKey)) {
         throw new InvalidTokenSignException();
       }
     } else {
