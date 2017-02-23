@@ -71,8 +71,15 @@ return [
   'useFirebasePublicKeys' => false,
 
   /**
+    * Required for Firebase token verification.
+    * Must be your Firebase project ID, the unique identifier for your Firebase project, which can be found in the URL of that project's console.
+    * Not used if 'useFirebasePublicKeys' is false.
+    */
+  'firebaseProject' => null,
+
+  /**
     * URL where the Firebase public keys are located.
-    * Not used if 'privateKeyPath' is null.
+    * Not used if 'privateKeyPath' is null or 'useFirebasePublicKeys' is false.
     */
   'firebasePublicKeysURL' => 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com',
 

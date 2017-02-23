@@ -43,7 +43,7 @@ class JWT
       $this->signer = new RsaSha256();
       $this->key = (new Keychain())->getPrivateKey($this->config['privateKeyPath']);
 
-      if (!is_null($this->config['useFirebasePublicKeys']) && $this->config['useFirebasePublicKeys'] === true) {
+      if (isset($this->config['useFirebasePublicKeys']) && $this->config['useFirebasePublicKeys'] === true) {
         $this->firebasePublicKeys = json_decode(file_get_contents($this->config['firebasePublicKeysURL']), true);
       } elseif (!is_null($this->config['publicKeyPath'])) {
         $this->publicKey = (new Keychain())->getPublicKey($this->config['publicKeyPath']);
@@ -162,20 +162,6 @@ class JWT
    * @throws InvalidTokenSignException When the token sign is not valid.
    */
   public function verifyToken() {
-    $validator = new ValidationData();
-
-    if (!is_null($this->config['iss'])) {
-      $validator->setIssuer($this->config['iss']);
-    }
-
-    if (!is_null($this->config['sub'])) {
-      $validator->setSubject($this->config['sub']);
-    }
-
-    if (!is_null($this->config['aud'])) {
-      $validator->setAudience($this->config['aud']);
-    }
-
     try {
       $this->token = self::parseTokenString();
     } catch (TokenNotFoundException $e) {
@@ -184,13 +170,34 @@ class JWT
       throw $e;
     }
 
-    $validator->setId($this->token->getClaim('jti'));
+    $validator = new ValidationData();
+
+    if (isset($this->config['useFirebasePublicKeys']) && $this->config['useFirebasePublicKeys'] === true) {
+      $validator->setIssuer('https://securetoken.google.com/' . $this->config['firebaseProject']);
+      $validator->setAudience($this->config['firebaseProject']);
+    } else {
+      if (!is_null($this->config['iss'])) {
+        $validator->setIssuer($this->config['iss']);
+      }
+
+      if (!is_null($this->config['sub'])) {
+        $validator->setSubject($this->config['sub']);
+      }
+
+      if (!is_null($this->config['aud'])) {
+        $validator->setAudience($this->config['aud']);
+      }
+
+      if ($this->token->hasClaim('jti')) {
+        $validator->setId($this->token->getClaim('jti'));
+      }
+    }
 
     if (!$this->token->validate($validator)) {
       throw new InvalidTokenException();
     }
 
-    if (!isset($this->publicKey)) {
+    if (!isset($this->firebasePublicKeys) && !isset($this->publicKey)) {
       if (!$this->token->verify($this->signer, $this->key)) {
         throw new InvalidTokenSignException();
       }
